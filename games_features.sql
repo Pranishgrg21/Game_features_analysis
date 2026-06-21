@@ -282,3 +282,159 @@ from games
 where ReleaseMonth is not null
 group by ReleaseMonth
 order by release desc;
+
+-- Platform Count summary
+
+select
+	sum(PlatformWindows) as windows_games,
+	sum(PlatformLinux) as linux_games,
+	sum(PlatformMac) as mac_games,
+	count(*) as total_games
+from games;
+
+-- Platform Percentage
+select
+	round(sum(PlatformWindows) * 100.0 / count(*), 2) as windows_pct,
+	round(sum(PlatformLinux) * 100.0 / count(*), 2) as linux_pct,
+	round(sum(PlatformMac) * 100.0 / count(*), 2) as mac_pct,
+	-- round(
+ --        SUM(
+ --            CASE
+ --                WHEN PlatformWindows = 1
+ --                  OR PlatformLinux = 1
+ --                  OR PlatformMac = 1
+ --                THEN 1
+ --                ELSE 0
+ --            END
+ --        ) * 100.0 / COUNT(*),
+ --        2
+ --    ) AS total_platform_pct
+from games;
+
+-- Platform CATEGORY  distribution
+select PlatformCategory,
+	count(*) as total_games
+from games
+group by PlatformCategory
+order by total_games desc;
+
+-- Metacritic by platform (cross platform games score)
+select PlatformCategory,
+	round(avg(Metacritic), 2) as avg_metacritic,
+	count(*) as games_count
+from games
+where Metacritic > 0
+group by PlatformCategory
+order by avg_metacritic desc;
+
+/*
+	Popularity & Ownership
+*/
+
+-- Top 10 most owned games
+
+select ResponseName, Genre, SteamSpyOwners,
+	RecommendationCount, ReviewCategory
+from games
+order by SteamSpyOwners desc
+limit 10;
+
+-- Popularity category breakdown
+
+select PopularityCategory,
+	count(*) as games_count,
+	round(avg(Metacritic), 2) as avg_metacritic,
+	round(avg(PriceFinal), 2) as avg_pricefinal
+from games
+group by PopularityCategory
+order by games_count desc;
+
+-- Average owners by genre
+
+select Genre,
+	round(avg(SteamSpyOwners), 0) as avg_owners,
+	round(avg(SteamSpyPlayersEstimate), 0) as avg_players
+from games
+group by Genre
+order by avg_owners desc;
+
+-- Games with most DLC count
+
+select ResponseName, Genre, DLCCount, Metacritic, PriceFinal
+from games
+order by DLCCount desc
+limit 10;
+
+-- Average DLC per genre
+
+select Genre,
+	round(avg(DLCCount), 2) as avg_dlccount,
+	max(DLCCOunt) as max_dlccount
+from games
+group by Genre
+order by avg_dlccount desc;
+
+-- Achievement analysis
+
+select
+	case
+		when AchievementCount = 0
+			then 'No Achievements'
+		when AchievementCount <= 20
+			then '1 - 20'
+		when AchievementCount <= 100
+			then '21 - 100'
+		else '100+'
+	end as achievement_bucket,
+	count(*) as total_games,
+	round(avg(Metacritic), 2) as avg_metacritic
+from games
+where Metacritic > 0
+group by achievement_bucket
+order by avg_metacritic desc;
+
+
+/*
+	Multiplayer Category Analysis
+*/
+
+-- Overall Category breakdown
+
+select
+	sum(CategorySinglePlayer) as singleplayer,
+	sum(CategoryMultiplayer) as multiplayer,
+	sum(CategoryCoop) as coop,
+	sum(CategoryMMO) as mmo,
+	sum(CategoryVRSupport) as vr,
+	sum(CategoryInAppPurchase) as in_app_purchase,
+	sum(CategoryIncludeLevelEditor) as level_editor,
+	count(*) as total_category
+from games;
+
+-- Multiplayer SinglePlayer: Quality popularity
+
+select 
+	case
+		when CategoryMultiplayer = 1
+			then 'Multiplayer'
+		else 'Single/Other'
+		end as mode,
+	count(*) as total_games,
+	round(avg(Metacritic), 2) as avg_metacritic,
+	round(avg(SteamSpyOwners), 0) as avg_owners,
+	round(avg(RecommendationCount), 0) as avg_recommendations
+from games
+group by mode;
+
+/*
+	Age rating analysis
+*/
+
+select AgeRating,
+	count(*) as total_count,
+	round(avg(Metacritic), 2) as avg_metacritic,
+	round(avg(RecommendationCount), 0) as avg_recommendations,
+	round(avg(SteamSpyOwners), 0) as avg_owners
+from games
+group by AgeRating
+order by total_count desc;
