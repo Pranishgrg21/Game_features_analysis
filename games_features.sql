@@ -438,3 +438,76 @@ select AgeRating,
 from games
 group by AgeRating
 order by total_count desc;
+
+/*
+	Windows Function + CTEs
+*/
+
+-- Rank games by Metacritic within each games
+
+select ResponseName, Genre, Metacritic,
+	Rank() over (Partition by Genre order by Metacritic desc) as genre_rank
+from games
+where Metacritic > 0
+order by Genre, genre_rank desc
+limit 10;
+
+-- Top 5 games per genre by RecommendationCount
+select * 
+	from (
+		select ResponseName, Genre, RecommendationCount, Metacritic,
+			row_number() over (partition by Genre order by RecommendationCount desc) as row_num
+	from games
+	) ranked
+where row_num <= 5
+order by Genre, row_num;
+
+-- Running total of games release by year
+
+select ReleaseYear,
+	count(*) as yearly_release,
+	sum(Count(*)) over (order by ReleaseYear) as cumulative_release
+from games
+where ReleaseYear is not null
+group by ReleaseYear
+order by ReleaseYear;
+
+-- CTE: Genre composite popularity score
+with genre_stats as (
+	select Genre,
+		count(*) as total_games,
+		round(avg(Metacritic), 2) as avg_metacritic,
+		round(avg(SteamSpyOwners), 0) as avg_owners,
+		round(avg(RecommendationCount), 0) as avg_recommendations
+	from games
+	where Metacritic > 0
+	group by Genre
+)
+select *,
+	round(avg_metacritic * 0.4 + avg_owners / 1000000.0 * 0.6, 4)
+		as popularity_score
+from genre_stats
+order by popularity_score desc;
+
+
+-- Free games with excellent review
+with free_games as (
+	select ResponseName, Genre, Metacritic,
+		SteamSpyOwners, RecommendationCount
+	from games
+	where IsFree = 1 and ReviewCategory = 'Excellent'
+)
+select * from free_games
+order by SteamSpyOwners desc
+limit 10;
+
+--Percentage rank for each game by metacritic
+
+select ResponseName, Genre, Metacritic,
+	round(
+		(percent_rank() over (order by Metacritic) * 100)::numeric, 1
+	) as percentage
+from games
+where Metacritic > 0
+order by Metacritic desc
+limit 20;
